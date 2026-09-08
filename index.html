@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Discussion Spinner</title>
+<meta name="description" content="A question spinner for hosting AI &amp; society discussion meetings.">
+<meta name="theme-color" content="#0e1013">
+<style>
+  :root {
+    --bg: #0e1013;
+    --panel: #161a20;
+    --text: #f2f4f7;
+    --muted: #8b93a1;
+    --accent: #ffc857;
+    --accent-ink: #1a1408;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+    padding: clamp(16px, 3vw, 32px);
+    padding-bottom: max(clamp(16px, 3vw, 32px), env(safe-area-inset-bottom));
+  }
+
+  /* ---------- header ---------- */
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .brand span { color: var(--accent); }
+
+  .counter {
+    font-size: clamp(0.8rem, 1.5vw, 1rem);
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .counter b { color: var(--text); font-weight: 600; }
+
+  /* ---------- stage ---------- */
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(24px, 5vh, 56px);
+    padding: clamp(24px, 6vh, 64px) 0;
+    text-align: center;
+  }
+
+  #question {
+    margin: 0;
+    max-width: 22ch;
+    font-size: clamp(1.6rem, 5.2vw, 4.2rem);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    transition: opacity 140ms ease, transform 140ms ease;
+  }
+
+  #question.idle { color: var(--muted); font-weight: 500; }
+
+  #question.spinning {
+    opacity: 0.42;
+    transform: scale(0.985);
+    color: var(--muted);
+  }
+
+  #question.landed { animation: land 420ms cubic-bezier(.2, .9, .25, 1.05); }
+
+  @keyframes land {
+    0%   { opacity: 0.4; transform: scale(0.94); }
+    60%  { opacity: 1;   transform: scale(1.015); }
+    100% { opacity: 1;   transform: scale(1); }
+  }
+
+  /* ---------- controls ---------- */
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+  }
+
+  #spin {
+    font: inherit;
+    font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: none;
+    border-radius: 999px;
+    padding: clamp(0.7em, 1.6vw, 0.85em) clamp(2em, 5vw, 3.2em);
+    cursor: pointer;
+    transition: transform 120ms ease, filter 120ms ease, opacity 160ms ease;
+    box-shadow: 0 10px 30px -12px rgba(255, 200, 87, 0.6);
+  }
+
+  #spin:hover:not(:disabled) { filter: brightness(1.08); }
+  #spin:active:not(:disabled) { transform: scale(0.97); }
+  #spin:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+
+  #skip {
+    font: inherit;
+    font-size: clamp(0.8rem, 1.4vw, 0.95rem);
+    color: var(--muted);
+    background: none;
+    border: 1px solid #2a3038;
+    border-radius: 999px;
+    padding: 0.55em 1.4em;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, opacity 160ms ease;
+  }
+
+  #skip:hover:not(:disabled) { color: var(--text); border-color: #444d59; }
+  #skip:disabled { opacity: 0; pointer-events: none; }
+
+  /* Touch screens need a bigger target than the desktop text button. */
+  @media (pointer: coarse) {
+    #skip { padding: 1em 1.9em; }
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- footer / status ---------- */
+
+  footer {
+    display: flex;
+    justify-content: center;
+    min-height: 1.4em;
+  }
+
+  #status {
+    font-size: clamp(0.75rem, 1.3vw, 0.9rem);
+    color: var(--muted);
+    text-align: center;
+    margin: 0;
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  #status.show { opacity: 1; }
+  #status.error { color: #ff8f80; max-width: 60ch; }
+  #status code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--accent);
+    background: var(--panel);
+    padding: 0.15em 0.45em;
+    border-radius: 5px;
+  }
+
+  .hint { display: none; }
+  @media (hover: hover) and (min-width: 700px) { .hint { display: inline; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #question, #spin { transition: none; }
+    #question.landed { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="brand">Discussion <span>Spinner</span></h1>
+  <div class="counter" id="counter" aria-hidden="true"></div>
+</header>
+
+<main>
+  <p id="question" class="idle" aria-live="polite">Press spin to draw a question.</p>
+
+  <div class="controls">
+    <button id="spin" type="button">Spin</button>
+    <button id="skip" type="button" disabled>Skip this one</button>
+  </div>
+</main>
+
+<footer>
+  <p id="status"></p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var SPIN_MS = 1500;
+  var TICK_MS = 70;
+
+  var questions = [];
+  var pool = [];        // indices not yet drawn in the current pass through the list
+  var current = null;   // index on screen
+  var spinning = false;
+  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var qEl = document.getElementById("question");
+  var spinEl = document.getElementById("spin");
+  var skipEl = document.getElementById("skip");
+  var counterEl = document.getElementById("counter");
+  var statusEl = document.getElementById("status");
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function setStatus(html, isError) {
+    statusEl.innerHTML = html || "";
+    statusEl.classList.toggle("show", !!html);
+    statusEl.classList.toggle("error", !!isError);
+  }
+
+  function updateCounter() {
+    if (!questions.length) { counterEl.textContent = ""; return; }
+    var shown = questions.length - pool.length;
+    counterEl.innerHTML = "<b>" + shown + "</b> / " + questions.length + " this session";
+  }
+
+  // Refill the pool with every question, avoiding an immediate repeat of `avoid`.
+  function refill(avoid) {
+    pool = questions.map(function (_, i) { return i; });
+    shuffle(pool);
+    if (avoid !== null && pool.length > 1 && pool[pool.length - 1] === avoid) {
+      var t = pool[pool.length - 1];
+      pool[pool.length - 1] = pool[0];
+      pool[0] = t;
+    }
+  }
+
+  function draw() {
+    var wrapped = false;
+    if (!pool.length) { refill(current); wrapped = true; }
+    return { index: pool.pop(), wrapped: wrapped };
+  }
+
+  function render(index) {
+    qEl.textContent = questions[index];
+    qEl.classList.remove("idle");
+  }
+
+  function spin(isSkip) {
+    if (spinning || !questions.length) return;
+
+    // A skip returns the question on screen to the pool, so it still counts as unseen.
+    if (isSkip && current !== null) {
+      pool.push(current);
+      shuffle(pool);
+    }
+
+    var result = draw();
+    spinning = true;
+    spinEl.disabled = true;
+    skipEl.disabled = true;
+    setStatus("");
+    qEl.classList.remove("landed");
+    qEl.classList.add("spinning");
+    updateCounter();
+
+    var duration = reducedMotion ? 200 : SPIN_MS;
+    var started = Date.now();
+
+    function tick() {
+      var elapsed = Date.now() - started;
+      if (elapsed >= duration) { land(result); return; }
+      render(Math.floor(Math.random() * questions.length));
+      // Ease out: ticks stretch further apart over the last third of the spin.
+      var progress = elapsed / duration;
+      var delay = TICK_MS * (progress > 0.66 ? 1 + (progress - 0.66) * 9 : 1);
+      setTimeout(tick, delay);
+    }
+
+    if (reducedMotion) setTimeout(function () { land(result); }, duration);
+    else tick();
+  }
+
+  function land(result) {
+    current = result.index;
+    render(current);
+    qEl.classList.remove("spinning");
+    qEl.classList.add("landed");
+    spinning = false;
+    spinEl.disabled = false;
+    skipEl.disabled = false;
+    spinEl.textContent = "Spin again";
+    updateCounter();
+    if (result.wrapped) {
+      setStatus("All " + questions.length + " questions have been used — starting the list over.");
+    }
+  }
+
+  spinEl.addEventListener("click", function () { spin(false); });
+  skipEl.addEventListener("click", function () { spin(true); });
+
+  // Space / Enter / right-arrow spin, so a presentation clicker works.
+  document.addEventListener("keydown", function (e) {
+    if (e.target.tagName === "BUTTON") return; // let a focused button handle its own keys
+    if (e.key === " " || e.key === "Enter" || e.key === "ArrowRight" || e.key === "PageDown") {
+      e.preventDefault();
+      spin(false);
+    }
+  });
+
+  fetch("questions.json", { cache: "no-store" })
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      if (!Array.isArray(data) || !data.length) throw new Error("questions.json must be a non-empty array");
+      questions = data.filter(function (q) { return typeof q === "string" && q.trim(); });
+      if (!questions.length) throw new Error("questions.json contains no usable questions");
+      refill(null);
+      updateCounter();
+      setStatus('<span class="hint">Press <b>space</b> to spin.</span>');
+    })
+    .catch(function (err) {
+      spinEl.disabled = true;
+      qEl.textContent = "Couldn't load the questions.";
+      var unserved = location.protocol !== "http:" && location.protocol !== "https:";
+      setStatus(
+        unserved
+          ? 'Browsers block file reads from <code>file://</code>. Serve the folder instead: run <code>python -m http.server</code> here, then open <code>localhost:8000</code>.'
+          : 'questions.json failed to load — ' + err.message,
+        true
+      );
+    });
+})();
+</script>
+</body>
+</html>
